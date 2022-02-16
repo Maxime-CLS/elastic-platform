@@ -1,0 +1,224 @@
+version: '2.2'
+
+services:
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${VERSION}
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - xpack.license.self_generated.type=basic 
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true 
+      - xpack.security.http.ssl.key=$CERTS_DIR/es01/es01.key
+      - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.http.ssl.certificate=$CERTS_DIR/es01/es01.crt
+      - xpack.security.transport.ssl.enabled=true 
+      - xpack.security.transport.ssl.verification_mode=certificate 
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/es01/es01.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/es01/es01.key
+      - xpack.security.authc.api_key.enabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+      - certs:$CERTS_DIR
+    ports:
+      - 9200:9200
+    networks:
+      - elastic
+
+    healthcheck:
+      test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${VERSION}
+    container_name: es02
+    environment:
+      - node.name=es02
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - xpack.license.self_generated.type=basic
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=$CERTS_DIR/es02/es02.key
+      - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.http.ssl.certificate=$CERTS_DIR/es02/es02.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/es02/es02.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/es02/es02.key
+      - xpack.security.authc.api_key.enabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data02:/usr/share/elasticsearch/data
+      - certs:$CERTS_DIR
+    networks:
+      - elastic
+
+  es03:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${VERSION}
+    container_name: es03
+    environment:
+      - node.name=es03
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=es01,es02,es03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - xpack.license.self_generated.type=basic
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=$CERTS_DIR/es03/es03.key
+      - xpack.security.http.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.http.ssl.certificate=$CERTS_DIR/es03/es03.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.security.transport.ssl.certificate_authorities=$CERTS_DIR/ca/ca.crt
+      - xpack.security.transport.ssl.certificate=$CERTS_DIR/es03/es03.crt
+      - xpack.security.transport.ssl.key=$CERTS_DIR/es03/es03.key
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data03:/usr/share/elasticsearch/data
+      - certs:$CERTS_DIR
+    networks:
+      - elastic
+  kib01:
+    image: docker.elastic.co/kibana/kibana:${VERSION}
+    container_name: kib01
+    depends_on: 
+      es01: { condition: service_healthy} 
+      package-registry: { condition: service_healthy }
+    ports:
+      - 5601:5601
+    environment:
+      SERVERNAME: localhost
+      ELASTICSEARCH_URL: https://es01:9200
+      ELASTICSEARCH_HOSTS: https://es01:9200
+      ELASTICSEARCH_USERNAME: $USER_KIBANA_SYSTEM
+      ELASTICSEARCH_PASSWORD: $PASSWORD_KIBANA_SYSTEM 
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: $CERTS_DIR/ca/ca.crt
+      SERVER_SSL_ENABLED: "true"
+      SERVER_SSL_KEY: $CERTS_DIR/kib01/kib01.key
+      SERVER_SSL_CERTIFICATE: $CERTS_DIR/kib01/kib01.crt
+      SERVER_SSL_CERTIFICATEAUTHORITIES: $CERTS_DIR/ca/ca.crt
+      XPACK_SECURITY_ENCRYPTIONKEY: "fhjskloppd678ehkdfdlliverpoolfcr"
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "fhjskloppd678ehkdfdlliverpoolfcr"
+      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOST: "https://es01:9200"
+      XPACK_FLEET_REGISTRYURL: "https://package-registry"
+      NODE_EXTRA_CA_CERTS: $CERTS_DIR/ca/ca.crt
+    healthcheck:
+       test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost/api/status | grep -q 'Looking good' >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+       retries: 100
+       interval: 5s
+    volumes:
+      - certs:$CERTS_DIR
+    networks:
+      - elastic
+  package-registry:
+    image: docker.elastic.co/package-registry/distribution:${VERSION}
+    container_name: package-registry
+    ports:
+      - 443
+    environment:
+       - EPR_ADDRESS=0.0.0.0:443
+       - EPR_TLS_KEY=$CERTS_DIR/package-registry/package-registry.key
+       - EPR_TLS_CERT=$CERTS_DIR/package-registry/package-registry.crt
+    healthcheck:
+      test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost/health >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      retries: 100
+      interval: 5s
+    volumes:
+        - certs:$CERTS_DIR 
+    networks:
+       - elastic
+  fleet-server:
+    image: docker.elastic.co/beats/elastic-agent-complete:${VERSION}
+    container_name: fleet-server
+    ports:
+      - 8220:8220
+    healthcheck:
+      test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost:8220/api/status | grep -q 'HEALTHY' >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      retries: 300
+      interval: 1s
+    environment:
+      FLEET_SERVER_ENABLE: "1"
+      ELASTICSEARCH_HOST: "https://es01:9200"
+      ELASTICSEARCH_CA: $CERTS_DIR/ca/ca.crt
+      ELASTICSEARCH_USERNAME: $USER_ELASTIC
+      ELASTICSEARCH_PASSWORD: $PASSWORD_ELASTIC
+      FLEET_URL: "https://fleet-server:8220"
+      FLEET_SERVER_CERT: $CERTS_DIR/fleet-server/fleet-server.crt  
+      FLEET_SERVER_CERT_KEY: $CERTS_DIR/fleet-server/fleet-server.key
+      KIBANA_FLEET_SETUP: "true"
+      KIBANA_HOST: "https://kib01:5601"
+      KIBANA_USERNAME: $USER_ELASTIC
+      KIBANA_PASSWORD: $PASSWORD_ELASTIC
+      KIBANA_CA: $CERTS_DIR/ca/ca.crt
+    depends_on:
+      es01: { condition: service_healthy }
+      kib01: { condition: service_healthy }
+    volumes:
+      - certs:$CERTS_DIR 
+    networks:
+        - elastic
+  elastic-agent:
+    image: docker.elastic.co/beats/elastic-agent-complete:${VERSION}
+    container_name: elastic-agent
+    restart: always
+    user: root # note, synthetic browser monitors require this set to `elastic-agent`
+    environment:
+      FLEET_ENROLL: 1
+      FLEET_URL: "https://fleet-server:8220"
+      FLEET_TOKEN_POLICY_NAME: "Default policy"
+      FLEET_CA: $CERTS_DIR/ca/ca.crt
+      KIBANA_FLEET_HOST: https://kib01:5601
+      KIBANA_FLEET_USERNAME: $USER_ELASTIC 
+      KIBANA_FLEET_PASSWORD: $PASSWORD_ELASTIC 
+      KIBANA_FLEET_CA: $CERTS_DIR/ca/ca.crt
+    depends_on:
+       es01: { condition: service_healthy }
+       fleet-server: { condition: service_healthy }
+    volumes:
+       - certs:$CERTS_DIR
+       - /var/run/docker.sock:/var/run/docker.sock:ro
+       - /var/log:/var/log:ro
+       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+       - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+       - /proc:/hostfs/proc:ro
+       - /:/hostfs:ro
+    networks:
+       - elastic
+volumes:
+  data01:
+    driver: local
+  data02:
+    driver: local
+  data03:
+    driver: local
+  certs:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge

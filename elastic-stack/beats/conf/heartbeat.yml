@@ -1,0 +1,122 @@
+heartbeat.monitors:
+- type: http
+  id: nginx-service-status
+  name: Nginx Status
+  schedule: '@every 10s'
+  urls:
+      - http://nginx:8081
+  timeout: 30s
+  check.response:
+    status: 200
+    body:
+      - "Welcome"
+- type: http
+  id: petclinic-service-status
+  name: Petclinic Status
+  schedule: '@every 10s'
+  urls:
+      - http://petclinic:8080/metrics/prometheus
+  timeout: 30s
+  check.response:
+    status: 200
+    body:
+      - "jvm_memory_committed_bytes"
+- type: tcp 
+  id: mysql-service-status
+  name: MySQL Status
+  schedule: '@every 10s'
+  hosts: ["tcp://mysql:3306"]
+
+- type: browser
+  id: home2edit-monitor
+  name: Home -> Edit Owner journey
+  schedule: "@every 10s"
+  source:
+    inline:
+      script: |-
+        step("load homepage", async () => {
+            await page.goto('http://localhost:8081/');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on find owners", async () => {
+            await page.click('#main-navbar > ul > li:nth-child(3) > a');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on find owners button", async () => {
+            await page.click('#search-owner-form > div:nth-child(2) > div > button');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on Eduardo Rodriguez", async () => {
+            await page.click('#vets > tbody > tr:nth-child(3) > td:nth-child(1) > a');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on edit owner button", async () => {
+            await page.click('body > div.container-fluid > div > a:nth-child(3)');
+            await page.waitForRequest(/intake/);
+        });
+
+- type: browser
+  id: home2vets-monitor
+  name: Home -> Show Vets journey
+  schedule: "@every 10s"
+  source:
+    inline:
+      script: |-
+        step("load homepage", async () => {
+            await page.goto('http://10.240.145.124:8081/');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on vets", async () => {
+            await page.click('#main-navbar > ul > li:nth-child(4) > a');
+            await page.waitForRequest(/intake/);
+        });
+
+- type: browser
+  id: home2addpet-monitor
+  name: Home -> Add Owner journey
+  schedule: "@every 10s"
+  source:
+    inline:
+      script: |-
+        step("load homepage", async () => {
+            await page.goto('http://10.240.145.124:8081/');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on find owners", async () => {
+            await page.click('#main-navbar > ul > li:nth-child(3) > a');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on add Owner button", async () => {
+            await page.click('body > div.container-fluid > div > a');
+            await page.waitForRequest(/intake/);
+        });
+
+- type: browser
+  id: error-monitor
+  name: Home -> Error journey
+  schedule: "@every 10s"
+  source:
+    inline:
+      script: |-
+        step("load homepage", async () => {
+            await page.goto('http://10.240.145.124:8081/');
+            await page.waitForRequest(/intake/);
+        });
+        step("click on error", async () => {
+            await page.click('#main-navbar > ul > li:nth-child(5) > a');
+            await page.waitForRequest(/intake/);
+
+processors:
+- add_cloud_metadata: ~
+- add_docker_metadata: ~
+- add_observer_metadata:
+      # Optional, but recommended geo settings for the location Heartbeat is running in
+      geo:
+        # Token describing this location
+        name: "${HOSTNAME}"
+
+output.elasticsearch:
+  hosts: 'https://es01:9200'
+  username: "elastic"
+  password: "WsWgVATiE1IllwkDQyPo"
+  ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]

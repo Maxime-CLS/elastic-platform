@@ -139,14 +139,14 @@ output.elasticsearch:
   # Optional protocol and basic auth credentials.
   protocol: "https"
   username: "elastic"
-  password: "WsWgVATiE1IllwkDQyPo"
+  password: "elastic"
 
   # Use SSL settings for HTTPS.
   ssl.enabled: true
 
   # SSL configuration. By default is off.
   # List of root certificates for HTTPS server verifications
-  ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]
+  ssl.certificate_authorities: ["/usr/share/filebeat/certs/ca/ca.crt"]
 
 #============================== Dashboards =====================================
 # These settings control loading the sample dashboards to the Kibana index. Loading
@@ -204,16 +204,16 @@ setup.kibana:
   # Scheme and port can be left out and will be set to the default (http and 5601)
   # In case you specify and additional path, the scheme is required: http://localhost:5601/path
   # IPv6 addresses should always be defined as: https://[2001:db8::1]:5601
-  host: "kib01:5601"
+  host: "kibana:5601"
 
   # Optional protocol and basic auth credentials.
   protocol: "https"
   username: "elastic"
-  password: "WsWgVATiE1IllwkDQyPo"
+  password: "elastic"
 
   # Use SSL settings for HTTPS. Default is true.
   ssl.enabled: true
-  ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]
+  ssl.certificate_authorities: ["/usr/share/filebeat/certs/ca/ca.crt"]
 
 #================================ Logging ======================================
 # There are four options for the log output: file, stderr, syslog, eventlog

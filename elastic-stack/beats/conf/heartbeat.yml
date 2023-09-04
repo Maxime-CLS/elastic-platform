@@ -63,7 +63,7 @@ heartbeat.monitors:
     inline:
       script: |-
         step("load homepage", async () => {
-            await page.goto('http://10.240.145.124:8081/');
+            await page.goto('http://localhost:8081/');
             await page.waitForRequest(/intake/);
         });
         step("click on vets", async () => {
@@ -79,7 +79,7 @@ heartbeat.monitors:
     inline:
       script: |-
         step("load homepage", async () => {
-            await page.goto('http://10.240.145.124:8081/');
+            await page.goto('http://localhost:8081/');
             await page.waitForRequest(/intake/);
         });
         step("click on find owners", async () => {
@@ -99,7 +99,7 @@ heartbeat.monitors:
     inline:
       script: |-
         step("load homepage", async () => {
-            await page.goto('http://10.240.145.124:8081/');
+            await page.goto('http://localhost:8081/');
             await page.waitForRequest(/intake/);
         });
         step("click on error", async () => {
@@ -118,5 +118,9 @@ processors:
 output.elasticsearch:
   hosts: 'https://es01:9200'
   username: "elastic"
-  password: "WsWgVATiE1IllwkDQyPo"
-  ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]
+  password: "elastic"
+  ssl.certificate_authorities: ["/usr/share/heartbeat/certs/ca/ca.crt"]
+
+setup.template.enabled: true
+setup.template.name: "heartbeat-%{[beat.version]}"
+setup.template.pattern: "heartbeat-%{[beat.version]}"

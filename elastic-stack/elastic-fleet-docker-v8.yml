@@ -217,6 +217,8 @@ services:
         condition: service_healthy
       es03:
         condition: service_healthy
+      package-registry:
+        condition: service_healthy
     image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
     volumes:
       - certs:/usr/share/kibana/config/certs
@@ -234,7 +236,9 @@ services:
       - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/kibana/kibana.crt
       - XPACK_SECURITY_ENCRYPTIONKEY="fhjskloppd678ehkdfdlliverpoolfcr"
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY="fhjskloppd678ehkdfdlliverpoolfcr"
-      - XPACK_FLEET_AGENTS_ENABLED=false
+      - XPACK_FLEET_AGENTS_ELASTICSEARCH_HOST="https://es01:9200"
+      - XPACK_FLEET_REGISTRYURL="https://package-registry"
+      - NODE_EXTRA_CA_CERTS=/usr/share/kibana/config/certs/ca/ca.crt
     healthcheck:
       test:
         [
@@ -247,44 +251,64 @@ services:
     networks:
       - elastic
 
-  apm-server:
-    image: docker.elastic.co/apm/apm-server:8.9.0
-    container_name: apm-server
+  fleet-server:
+    image: docker.elastic.co/beats/elastic-agent-complete:${STACK_VERSION}
+    container_name: fleet-server
+    ports:
+      - 8220:8220
+    healthcheck:
+      test: curl --cacert $CERTS_DIR/ca/ca.crt -s https://localhost:8220/api/status | grep -q 'HEALTHY' >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      retries: 300
+      interval: 1s
+    environment:
+      - FLEET_SERVER_ENABLE=1
+      - ELASTICSEARCH_HOST=https://es01:9200
+      - ELASTICSEARCH_CA=/usr/share/fleet-server/config/certs/ca/ca.crt
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - FLEET_URL=https://fleet-server:8220
+      - FLEET_SERVER_CERT=/usr/share/fleet-server/config/certs/fleet-server/fleet-server.crt
+      - FLEET_SERVER_CERT_KEY=/usr/share/fleet-server/config/certs/fleet-server/fleet-server.key
+      - FLEET_SERVER_ELASTICSEARCH_HOST=https://es01:9200
+      - FLEET_SERVER_ELASTICSEARCH_CA=/usr/share/fleet-server/config/certs/ca/ca.crt
+      - FLEET_SERVER_ES=https://es01:9200
+      - FLEET_SERVER_POLICY_ID=fleet-server-policy
+      - FLEET_SERVER_PORT=8220
+      - KIBANA_FLEET_SETUP=1
+      - KIBANA_HOST=https://kibana:5601
+      - KIBANA_USERNAME=elastic
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+      - KIBANA_CA=/usr/share/fleet-server/config/certs/ca/ca.crt
     depends_on:
       es01:
         condition: service_healthy
       kibana:
         condition: service_healthy
-    cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
-    cap_drop: ["ALL"]
-    ports:
-      - 8200:8200
     volumes:
-      - certs:/usr/share/apm-server/config/certs
+      - certs:/usr/share/fleet-server/config/certs
     networks:
       - elastic
-    command: >
-      apm-server -e
-        -E apm-server.rum.enabled=true
-        -E apm-server.data_streams.wait_for_integration=false
-        -E setup.kibana.host=kibana:5601
-        -E setup.template.settings.index.number_of_replicas=1
-        -E apm-server.kibana.enabled=true
-        -E apm-server.kibana.host=kibana:5601
-        -E apm-server.kibana.protocol=https
-        -E apm-server.kibana.username=elastic
-        -E apm-server.kibana.password=${KIBANA_PASSWORD}
-        -E apm-server.kibana.ssl.enabled=true
-        -E apm-server.kibana.ssl.certificate_authorities=["/usr/share/apm-server/config/certs/ca/ca.crt"]
-        -E output.elasticsearch.hosts=["https://es01:9200"]
-        -E output.elasticsearch.username=elastic
-        -E output.elasticsearch.password=${ELASTIC_PASSWORD}
-        -E output.elasticsearch.ssl.certificate_authorities=["/usr/share/apm-server/config/certs/ca/ca.crt"]
-    mem_limit: ${MEM_LIMIT}
+
+  package-registry:
+    image: docker.elastic.co/package-registry/distribution:${STACK_VERSION}
+    container_name: package-registry
+    depends_on:
+      setup:
+        condition: service_healthy
+    ports:
+      - 443
+    environment:
+      - EPR_ADDRESS=0.0.0.0:443
+      - EPR_TLS_KEY=/usr/share/package-registry/config/certs/package-registry/package-registry.key
+      - EPR_TLS_CERT=/usr/share/package-registry/config/certs/package-registry/package-registry.crt
     healthcheck:
-      interval: 10s
-      retries: 12
-      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8200/
+      test: curl --cacert /usr/share/package-registry/config/certs/ca/ca.crt -s https://localhost/health >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      retries: 100
+      interval: 5s
+    volumes:
+      - certs:/usr/share/package-registry/config/certs
+    networks:
+      - elastic
 
 volumes:
   certs:

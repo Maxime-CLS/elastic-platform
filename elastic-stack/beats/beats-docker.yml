@@ -1,7 +1,7 @@
 version: '2.2'
 services:
   filebeat:
-    image: docker.elastic.co/beats/filebeat:${VERSION}
+    image: docker.elastic.co/beats/filebeat:${STACK_VERSION}
     container_name: filebeat
     restart: unless-stopped
     entrypoint: "filebeat -e -strict.perms=false"
@@ -11,11 +11,13 @@ services:
     - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
     - "/var/run/docker.sock:/var/run/docker.sock:ro"
     - "/var/log:/tmp:ro"
-    - certs:$CERTS_DIR
+    - certs:/usr/share/filebeat/certs/
+    mem_limit: ${MEM_LIMIT}
     networks:
     - elastic
+
   metricbeat:
-    image: docker.elastic.co/beats/metricbeat:${VERSION}
+    image: docker.elastic.co/beats/metricbeat:${STACK_VERSION}
     container_name: metricbeat
     restart: unless-stopped
     entrypoint: "metricbeat -e -strict.perms=false"
@@ -26,19 +28,22 @@ services:
     - "/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro"
     - "/:/hostfs:ro"
     - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    - certs:$CERTS_DIR
+    - certs:/usr/share/metricbeat/certs/
+    mem_limit: ${MEM_LIMIT}
     networks:
     - elastic
+
   heartbeat:
-    image: docker.elastic.co/beats/heartbeat:${VERSION}
+    image: docker.elastic.co/beats/heartbeat:${STACK_VERSION}
     container_name: heartbeat
     restart: unless-stopped
     entrypoint: "heartbeat -e -strict.perms=false"
     user: heartbeat 
     volumes:
     - "./conf/heartbeat.yml:/usr/share/heartbeat/heartbeat.yml:ro"
-    - "/var/run/docker.sock:/var/run/docker.socki:ro" 
-    - certs:$CERTS_DIR
+    - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    - certs:/usr/share/heartbeat/certs/
+    mem_limit: ${MEM_LIMIT}
     networks:
     - elastic
 
@@ -48,7 +53,5 @@ volumes:
     driver: local
 
 networks:
-    elastic:
-        name: elastic
-        driver: bridge
-
+  elastic:
+    driver: bridge

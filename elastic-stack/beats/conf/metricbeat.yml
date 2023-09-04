@@ -50,9 +50,9 @@ processors:
 output.elasticsearch:
   hosts: ["https://es01:9200"]
   username: "elastic"
-  password: "WsWgVATiE1IllwkDQyPo"
+  password: "elastic"
   ssl.enabled: true
-  ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]
+  ssl.certificate_authorities: ["/usr/share/metricbeat/certs/ca/ca.crt"]
 
 #============================== Dashboards =====================================
 setup.dashboards:
@@ -60,9 +60,8 @@ setup.dashboards:
 
 #============================== Kibana =========================================
 setup.kibana:
-  host: "https://kib01:5601"
+  host: "https://kibana:5601"
   username: "elastic"
-  password: "WsWgVATiE1IllwkDQyPo"
+  password: "elastic"
   ssl.enabled: true
-  ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]
-
+  ssl.certificate_authorities: ["/usr/share/metricbeat/certs/ca/ca.crt"]

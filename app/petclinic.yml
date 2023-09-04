@@ -17,6 +17,7 @@ services:
       - ./conf/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - elastic
+
   petclinic:
     image: docker.io/michaelhyatt/elastic-k8s-o11y-workshop-petclinic:1.25.0
     container_name: petclinic
@@ -67,5 +68,4 @@ services:
 
 networks:
   elastic:
-    name: elastic
     driver: bridge

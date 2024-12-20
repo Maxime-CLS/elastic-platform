@@ -35,7 +35,7 @@ heartbeat.monitors:
     inline:
       script: |-
         step("load homepage", async () => {
-            await page.goto('http://localhost:8081/');
+            await page.goto('http://http://192.168.1.144:8081/');
             await page.waitForRequest(/intake/);
         });
         step("click on find owners", async () => {

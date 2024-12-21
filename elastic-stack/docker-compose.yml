@@ -158,7 +158,7 @@ services:
       test: curl --cacert certs/ca/ca.crt -s https://localhost:8220/api/status | grep -q 'HEALTHY' >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
       retries: 300
       interval: 1s
-    image: docker.elastic.co/beats/elastic-agent:${STACK_VERSION}
+    image: docker.elastic.co/beats/elastic-agent-complete:${STACK_VERSION}
     container_name: ecp-fleet-server
     volumes:
       - certs:/certs:z

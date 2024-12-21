@@ -62,6 +62,16 @@ set_fleet_values() {
   printf '{"config_yaml": "%s"}' "ssl.verification_mode: certificate" | curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -XPUT "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/fleet/outputs/fleet-default-output" -d @- | jq
 }
 
+set_synthetics_monitor() {
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/private_locations" --data '{ "label": "localhost", "agentPolicyId": "default-policy", "tags": ["private"]}'
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/monitors" --data '{ "type": "http", "name": "Nginx Availability", "url": "http://nginx:8081", "tags": ["nginx", "availability"], "locations": [{"id":"default-policy","label":"localhost"}]}'
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/monitors" --data '{ "type": "http", "name": "Backend Availability", "url": "http://petclinic:8080", "tags": ["backend", "availability"], "locations": [{"id":"default-policy","label":"localhost"}]}'
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/monitors" --data '{ "type": "tcp", "name": "DataBase Availability", "host": "tcp://mysql:3306", "tags": ["database", "availability"], "locations": [{"id":"default-policy","label":"localhost"}]}'
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/monitors" --data '{ "type": "browser", "name": "Home -> Show Vets journey", "inline_script": "step(\"load homepage\", async () => { await page.goto(\"http://'${ipvar}':8081/\"); await page.waitForRequest(/intake/); }); step(\"click on vets\", async () => { await page.click(\"#main-navbar > ul > li:nth-child(4) > a\"); await page.waitForRequest(/intake/); });", "tags": ["user_journeys", "availability"], "locations": [{"id":"default-policy","label":"localhost"}]}'
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/monitors" --data '{ "type": "browser", "name": "Home -> Add Owner journey", "inline_script": "step(\"load homepage\", async () => { await page.goto(\"http://'${ipvar}':8081/\"); await page.waitForRequest(/intake/); }); step(\"click on find owners\", async () => { await page.click(\"#main-navbar > ul > li:nth-child(3) > a\"); await page.waitForRequest(/intake/); }); step(\"click on add Owner button\", async () => { await page.click(\"body > div.container-fluid > div > a\"); await page.waitForRequest(/intake/); });", "tags": ["user_journeys", "availability"], "locations": [{"id":"default-policy","label":"localhost"}]}'
+  curl -k --silent --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X POST "${HEADERS[@]}" "${LOCAL_KBN_URL}/api/synthetics/monitors" --data '{ "type": "browser", "name": "Home -> Home -> Error journey", "inline_script": "step(\"load homepage\", async () => { await page.goto(\"http://'${ipvar}':8081/\"); await page.waitForRequest(/intake/); }); step(\"click on error\", async () => { await page.click(\"#main-navbar > ul > li:nth-child(5) > a\"); await page.waitForRequest(/intake/); });", "tags": ["user_journeys", "availability"], "locations": [{"id":"default-policy","label":"localhost"}]}'
+}
+
 clear_documents() {
   if (($(curl -k --silent "${HEADERS[@]}" --user "${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}" -X DELETE "https://${ipvar}:9200/_data_stream/logs-*" | grep -c "true") > 0)); then
     printf "Successfully cleared logs data stream"
@@ -118,7 +128,8 @@ case "${ACTION}" in
   # Collect the Elastic, Kibana, and Elastic-Agent Docker images
   docker pull "docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}"
   docker pull "docker.elastic.co/kibana/kibana:${STACK_VERSION}"
-  docker pull "docker.elastic.co/beats/elastic-agent:${STACK_VERSION}"
+  docker pull "docker.elastic.co/beats/elastic-agent-complete:${STACK_VERSION}"
+  docker pull "docker.elastic.co/package-registry/distribution:${STACK_VERSION}"
   ;;
 
 "start")
@@ -138,6 +149,10 @@ case "${ACTION}" in
   set_fleet_values > /dev/null 2>&1
   echo
 
+  echo "Populating Synthetic Monitor."
+  set_synthetics_monitor > /dev/null 2>&1
+  echo
+  
   echo "READY SET GO!"
   echo
   echo "Browse to https://localhost:${KIBANA_PORT}"

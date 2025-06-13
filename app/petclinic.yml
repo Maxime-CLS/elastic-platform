@@ -2,7 +2,7 @@ version: '2.2'
 
 services:
   nginx:
-    image: nginx:1.17.3
+    image: nginx:1.27.5
     container_name: nginx
     labels:
       "co.elastic.logs/module": "nginx"

@@ -85,6 +85,7 @@ services:
       - cluster.name=${CLUSTER_NAME}
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - bootstrap.memory_lock=true
+      - path.repo=/usr/share/elasticsearch/snapshots/
       - discovery.type=single-node
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=true
@@ -100,7 +101,6 @@ services:
       - xpack.security.transport.ssl.verification_mode=certificate
       - xpack.security.transport.ssl.client_authentication=optional
       - xpack.license.self_generated.type=${LICENSE}
-    mem_limit: ${MEM_LIMIT}
     ulimits:
       memlock:
         soft: -1
